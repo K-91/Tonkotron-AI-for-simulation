@@ -1,0 +1,1 @@
+This syncs the assets/scripts/ folder only
