@@ -1,10 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System;
-using System.Linq;
 using UnityEngine;
+using System.Collections;
 
-public class SmartTank : AITank
+public class SmartTank_TONKS_FSM : AITank
 {
     public Dictionary<GameObject, float> targetTanksInSight = new Dictionary<GameObject, float>();
     public Dictionary<GameObject, float> consumablesInSight = new Dictionary<GameObject, float>();
@@ -19,36 +18,43 @@ public class SmartTank : AITank
     public GameObject consumablePosition;
     [HideInInspector]
     public GameObject basePosition;
+    [HideInInspector]
+    public Material tanktopcolor;
+    [HideInInspector]
+    public Material tankbodycolor;
 
-    private StateMachine FSM;
+
+    private StateMachine_TONKS_FSM FSM;
 
     private float fuelPanicLimit = 125f;
     private float fuelSurvivalLimit = 15f;
     private float hpPanicLimit = 125f;
     private int ammoPanicLimit = 15;
 
+    private float rgb = 0f;
+
 
 
     private void Awake()
     {
-        FSM = GetComponent<StateMachine>();
+        FSM = gameObject.AddComponent<StateMachine_TONKS_FSM>();
     }
     private void InitializeStateMachine(){
-        Dictionary<Type, BaseState> states = new Dictionary<Type, BaseState>
+        targetTankPrediction = new GameObject("TonksAimPosition");
+        Dictionary<Type, BaseState_TONKS_FSM> states = new Dictionary<Type, BaseState_TONKS_FSM>
         {
-            { typeof(ChoiceState), new ChoiceState() },
+            { typeof(ChoiceState_TONKS_FSM), new ChoiceState_TONKS_FSM() },
 
-            { typeof(AttackTankState), new AttackTankState() },
-            { typeof(AttackBaseState), new AttackBaseState() },
-            { typeof(CollectState), new CollectState() },
-            { typeof(WanderState), new WanderState() },
-            { typeof(SurvivalState), new SurvivalState() }
+            { typeof(AttackTankState_TONKS_FSM), new AttackTankState_TONKS_FSM() },
+            { typeof(AttackBaseState_TONKS_FSM), new AttackBaseState_TONKS_FSM() },
+            { typeof(CollectState_TONKS_FSM), new CollectState_TONKS_FSM() },
+            { typeof(WanderState_TONKS_FSM), new WanderState_TONKS_FSM() },
+            { typeof(SurvivalState_TONKS_FSM), new SurvivalState_TONKS_FSM() }
         };
         FSM.SetStates(states);
         FSM.SetTank();
-        targetTankPrediction = new GameObject("AimPosition");
+        targetTankPrediction.transform.SetParent(transform.parent.transform);
     }
-
 
 
 
@@ -56,7 +62,12 @@ public class SmartTank : AITank
     WARNING, do not include void Start(), use AITankStart() instead if you want to use Start method from Monobehaviour.
     *******************************************************************************************************/
     public override void AITankStart(){
+        
+        tankbodycolor = transform.Find("Model").Find("Body").GetComponent<Renderer>().material;
+        tanktopcolor = transform.Find("Model").Find("Turret").Find("TurretPart").GetComponent<Renderer>().material;
+        //basecolor = transform.Find("Base").Find("Model").GetComponent<Renderer>().material;
         InitializeStateMachine();
+       
     }
 
     /*******************************************************************************************************       
@@ -68,6 +79,7 @@ public class SmartTank : AITank
         consumablesInSight = GetAllConsumablesFound;
         basesInSight = GetAllBasesFound;
         InSightUpdate();
+        RGBupdate();
     }
 
     public float GetHealth{ get{ return GetHealthLevel; }}
@@ -85,7 +97,7 @@ public class SmartTank : AITank
 
 
     public void InSightUpdate(){
-        //i'm only storing/using a last seen position for these, not cheating to use enemy current positions
+        //i'm only using a last seen position for these, not cheating to use current positions
        
         foreach(KeyValuePair<GameObject, float> item in consumablesInSight){
             if (!consumablesLastSeen.ContainsKey(item.Key)) {
@@ -95,6 +107,12 @@ public class SmartTank : AITank
                 consumablesLastSeen[item.Key] = new Dictionary<String, Vector3> { { item.Key.name, item.Key.transform.position } };
             }
         }
+    }
+    public void RGBupdate() {
+        rgb += Time.fixedDeltaTime / 16f;
+        rgb %= 1f;
+        tankbodycolor.color = Color.HSVToRGB(rgb, 1f, 1f);
+        tanktopcolor.color = Color.HSVToRGB(rgb , 1f, 1f);
     }
 
     /*******************************************************************************************************       

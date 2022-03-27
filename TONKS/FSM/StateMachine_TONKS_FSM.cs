@@ -1,22 +1,21 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class StateMachine : MonoBehaviour
+public class StateMachine_TONKS_FSM : MonoBehaviour
 {
 
-    private Dictionary<Type, BaseState> states;
+    private Dictionary<Type, BaseState_TONKS_FSM> states;
 
-    public BaseState currentState;
-    protected SmartTank me;
+    public BaseState_TONKS_FSM currentState;
+    protected SmartTank_TONKS_FSM me;
     public void SetTank(){
-        me = GetComponent<SmartTank>();
+        me = GetComponent<SmartTank_TONKS_FSM>();
     }
 
 
-    public BaseState CurrentState{
+    public BaseState_TONKS_FSM CurrentState{
         get{
             return currentState;
         }
@@ -25,7 +24,7 @@ public class StateMachine : MonoBehaviour
         }
     }
 
-    public void SetStates(Dictionary<Type, BaseState> states){
+    public void SetStates(Dictionary<Type, BaseState_TONKS_FSM> states){
         this.states = states;
     }
 
