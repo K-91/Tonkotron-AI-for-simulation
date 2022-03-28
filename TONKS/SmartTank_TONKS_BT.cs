@@ -2,8 +2,9 @@
 using System;
 using UnityEngine;
 using System.Collections;
+using System.Linq;
 
-public class SmartTank_TONKS_FSM : AITank
+public class SmartTank_TONKS_BT : AITank
 {
     public Dictionary<GameObject, float> targetTanksInSight = new Dictionary<GameObject, float>();
     public Dictionary<GameObject, float> consumablesInSight = new Dictionary<GameObject, float>();
@@ -24,7 +25,14 @@ public class SmartTank_TONKS_FSM : AITank
     public Material tankbodycolor;
 
 
-    private StateMachine_TONKS_FSM FSM;
+    public BTAction healthCheck;
+    public BTAction ammoCheck;
+    public BTAction fuelCheck;
+    public BTSequence battleReadyCheck;
+
+
+
+    private StateMachine_TONKS_BT BT;
 
     private float fuelPanicLimit = 125f;
     private float fuelSurvivalLimit = 15f;
@@ -37,24 +45,24 @@ public class SmartTank_TONKS_FSM : AITank
 
     private void Awake()
     {
-        if(FSM == null) {
-            FSM = gameObject.AddComponent<StateMachine_TONKS_FSM>();
+        if(BT == null) {
+            BT = gameObject.AddComponent<StateMachine_TONKS_BT>();
         }
     }
     private void InitializeStateMachine(){
         targetTankPrediction = new GameObject("TonksAimPosition");
-        Dictionary<Type, BaseState_TONKS_FSM> states = new Dictionary<Type, BaseState_TONKS_FSM>
+        Dictionary<Type, BaseState_TONKS_BT> states = new Dictionary<Type, BaseState_TONKS_BT>
         {
-            { typeof(ChoiceState_TONKS_FSM), new ChoiceState_TONKS_FSM() },
+            { typeof(ChoiceState_TONKS_BT), new ChoiceState_TONKS_BT() },
 
-            { typeof(AttackTankState_TONKS_FSM), new AttackTankState_TONKS_FSM() },
-            { typeof(AttackBaseState_TONKS_FSM), new AttackBaseState_TONKS_FSM() },
-            { typeof(CollectState_TONKS_FSM), new CollectState_TONKS_FSM() },
-            { typeof(WanderState_TONKS_FSM), new WanderState_TONKS_FSM() },
-            { typeof(SurvivalState_TONKS_FSM), new SurvivalState_TONKS_FSM() }
+            { typeof(AttackTankState_TONKS_BT), new AttackTankState_TONKS_BT() },
+            { typeof(AttackBaseState_TONKS_BT), new AttackBaseState_TONKS_BT() },
+            { typeof(CollectState_TONKS_BT), new CollectState_TONKS_BT() },
+            { typeof(WanderState_TONKS_BT), new WanderState_TONKS_BT() },
+            { typeof(SurvivalState_TONKS_BT), new SurvivalState_TONKS_BT() }
         };
-        FSM.SetStates(states);
-        FSM.SetTank();
+        BT.SetStates(states);
+        BT.SetTank();
         targetTankPrediction.transform.SetParent(transform.parent.transform);
     }
 
@@ -69,6 +77,13 @@ public class SmartTank_TONKS_FSM : AITank
         tanktopcolor = transform.Find("Model").Find("Turret").Find("TurretPart").GetComponent<Renderer>().material;
         //basecolor = transform.Find("Base").Find("Model").GetComponent<Renderer>().material;
         InitializeStateMachine();
+        healthCheck = new BTAction(HealthCheck);
+        ammoCheck = new BTAction(AmmoCheck);
+        fuelCheck = new BTAction(FuelCheck);
+        battleReadyCheck = new BTSequence(new List<BTBaseNode> { healthCheck, ammoCheck, fuelCheck});
+
+
+
        
     }
 
@@ -119,7 +134,59 @@ public class SmartTank_TONKS_FSM : AITank
         tankbodycolor.color = Color.HSVToRGB(rgb, 1f, 1f);
         tanktopcolor.color = Color.HSVToRGB(rgb , 1f, 1f);
     }
+    public BTNodeStates HealthCheck() {
+        if(GetHealthLevel >= 30f) {
 
+            return BTNodeStates.FAILURE;
+        }
+        else {
+            return BTNodeStates.SUCCESS;
+        }
+    }
+
+    public BTNodeStates AmmoCheck() {
+        if(GetAmmoLevel == 0) {
+
+            return BTNodeStates.FAILURE;
+        }
+        else {
+            return BTNodeStates.SUCCESS;
+        }
+    }
+    public BTNodeStates FuelCheck() {
+        if(GetFuelLevel <= 15f) {
+
+            return BTNodeStates.FAILURE;
+        }
+        else {
+            return BTNodeStates.SUCCESS;
+        }
+    }
+    public BTNodeStates ItemSpottedCheck() {
+        if(consumablesLastSeen.Count != 0 && consumablesLastSeen.First().Key != null) {
+            return BTNodeStates.SUCCESS;
+        }
+        else {
+            return BTNodeStates.FAILURE;
+        }
+    }
+
+    public BTNodeStates TankSpottedCheck() {
+        if(targetTanksInSight.Count != 0 && targetTanksInSight.First().Key != null) {
+            return BTNodeStates.SUCCESS;
+        }
+        else {
+            return BTNodeStates.FAILURE;
+        }
+    }
+    public BTNodeStates BaseSpottedCheck() {
+        if(basesInSight.Count != 0 && basesInSight.First().Key != null) {
+            return BTNodeStates.SUCCESS;
+        }
+        else {
+            return BTNodeStates.FAILURE;
+        }
+    }
     /*******************************************************************************************************       
     WARNING, do not include void OnCollisionEnter(), use AIOnCollisionEnter() instead if you want to use Update method from Monobehaviour.
     *******************************************************************************************************/

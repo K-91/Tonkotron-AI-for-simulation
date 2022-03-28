@@ -2,8 +2,9 @@
 using System;
 using UnityEngine;
 using System.Collections;
+using System.Linq;
 
-public class SmartTank_TONKS_FSM : AITank
+public class SmartTank_TONKS_RBS : AITank
 {
     public Dictionary<GameObject, float> targetTanksInSight = new Dictionary<GameObject, float>();
     public Dictionary<GameObject, float> consumablesInSight = new Dictionary<GameObject, float>();
@@ -23,13 +24,10 @@ public class SmartTank_TONKS_FSM : AITank
     [HideInInspector]
     public Material tankbodycolor;
 
+    public Rules rules = new Rules();
+    public Dictionary<string, bool> stats = new Dictionary<string, bool>();
 
-    private StateMachine_TONKS_FSM FSM;
-
-    private float fuelPanicLimit = 125f;
-    private float fuelSurvivalLimit = 15f;
-    private float hpPanicLimit = 125f;
-    private int ammoPanicLimit = 15;
+    private StateMachine_TONKS_RBS RBS;
 
     private float rgb = 0f;
 
@@ -37,24 +35,25 @@ public class SmartTank_TONKS_FSM : AITank
 
     private void Awake()
     {
-        if(FSM == null) {
-            FSM = gameObject.AddComponent<StateMachine_TONKS_FSM>();
+        if(RBS == null) {
+            RBS = gameObject.AddComponent<StateMachine_TONKS_RBS>();
         }
+
     }
     private void InitializeStateMachine(){
         targetTankPrediction = new GameObject("TonksAimPosition");
-        Dictionary<Type, BaseState_TONKS_FSM> states = new Dictionary<Type, BaseState_TONKS_FSM>
+        Dictionary<Type, BaseState_TONKS_RBS> states = new Dictionary<Type, BaseState_TONKS_RBS>
         {
-            { typeof(ChoiceState_TONKS_FSM), new ChoiceState_TONKS_FSM() },
+            { typeof(ChoiceState_TONKS_RBS), new ChoiceState_TONKS_RBS() },
 
-            { typeof(AttackTankState_TONKS_FSM), new AttackTankState_TONKS_FSM() },
-            { typeof(AttackBaseState_TONKS_FSM), new AttackBaseState_TONKS_FSM() },
-            { typeof(CollectState_TONKS_FSM), new CollectState_TONKS_FSM() },
-            { typeof(WanderState_TONKS_FSM), new WanderState_TONKS_FSM() },
-            { typeof(SurvivalState_TONKS_FSM), new SurvivalState_TONKS_FSM() }
+            { typeof(AttackTankState_TONKS_RBS), new AttackTankState_TONKS_RBS() },
+            { typeof(AttackBaseState_TONKS_RBS), new AttackBaseState_TONKS_RBS() },
+            { typeof(CollectState_TONKS_RBS), new CollectState_TONKS_RBS() },
+            { typeof(WanderState_TONKS_RBS), new WanderState_TONKS_RBS() },
+            { typeof(SurvivalState_TONKS_RBS), new SurvivalState_TONKS_RBS() }
         };
-        FSM.SetStates(states);
-        FSM.SetTank();
+        RBS.SetStates(states);
+        RBS.SetTank();
         targetTankPrediction.transform.SetParent(transform.parent.transform);
     }
 
@@ -69,6 +68,26 @@ public class SmartTank_TONKS_FSM : AITank
         tanktopcolor = transform.Find("Model").Find("Turret").Find("TurretPart").GetComponent<Renderer>().material;
         //basecolor = transform.Find("Base").Find("Model").GetComponent<Renderer>().material;
         InitializeStateMachine();
+
+        stats.Add("lowHP", false);
+        stats.Add("tankSpotted", false);
+        stats.Add("baseSpotted", false);
+        stats.Add("noAmmo", false);
+        stats.Add("lowFuel", false);
+        stats.Add("foundItem", false);
+        stats.Add("battleReady", false);
+        stats.Add("true", true);
+        stats.Add("false", false);
+
+        rules.AddRule(new Rule("foundItem","true",typeof(CollectState_TONKS_RBS),Rule.Predicate.And));
+        rules.AddRule(new Rule("tankSpotted","battleReady",typeof(AttackTankState_TONKS_RBS),Rule.Predicate.And));
+        rules.AddRule(new Rule("lowFuel", "tankSpotted" ,typeof(AttackTankState_TONKS_RBS),Rule.Predicate.And));
+
+        rules.AddRule(new Rule("baseSpotted", "battleReady" ,typeof(AttackBaseState_TONKS_RBS),Rule.Predicate.And));
+        rules.AddRule(new Rule("lowFuel", "true" ,typeof(SurvivalState_TONKS_RBS),Rule.Predicate.And));
+        
+
+
        
     }
 
@@ -81,16 +100,9 @@ public class SmartTank_TONKS_FSM : AITank
         consumablesInSight = GetAllConsumablesFound;
         basesInSight = GetAllBasesFound;
         InSightUpdate();
+        StatsUpdate();
         RGBupdate();
     }
-
-    public float GetHealth{ get{ return GetHealthLevel; }}
-    public float GetAmmo{ get{ return GetAmmoLevel; }}
-    public float GetFuel{ get { return GetFuelLevel; }}
-    public float FuelPanicLimit { get { return fuelPanicLimit; }}
-    public float FuelSurvivalLimit { get { return fuelSurvivalLimit; }}
-    public float HPPanicLimit { get { return hpPanicLimit; }}
-    public float AmmoPanicLimit { get { return ammoPanicLimit; }}
 
     public void PathToRandom(float x = 1f){ FollowPathToRandomPoint(x); }
     public void NewRandomPoint(){ GenerateRandomPoint(); }
@@ -119,7 +131,15 @@ public class SmartTank_TONKS_FSM : AITank
         tankbodycolor.color = Color.HSVToRGB(rgb, 1f, 1f);
         tanktopcolor.color = Color.HSVToRGB(rgb , 1f, 1f);
     }
-
+    public void StatsUpdate() {
+        stats["lowHP"] = (GetHealthLevel <= 30f);
+        stats["tankSpotted"] = (targetTanksInSight.Count != 0 && targetTanksInSight.First().Key != null);
+        stats["baseSpotted"] = (basesInSight.Count != 0 && basesInSight.First().Key != null);
+        stats["foundItem"] = (consumablesLastSeen.Count != 0 && consumablesLastSeen.First().Key != null);
+        stats["noAmmo"] = (GetAmmoLevel == 0);
+        stats["lowFuel"] = (GetFuelLevel <= 15f);
+        stats["battleReady"] = ((!stats["noAmmo"]) && (!stats["lowHP"]) && (!stats["lowFuel"]));
+    }
     /*******************************************************************************************************       
     WARNING, do not include void OnCollisionEnter(), use AIOnCollisionEnter() instead if you want to use Update method from Monobehaviour.
     *******************************************************************************************************/

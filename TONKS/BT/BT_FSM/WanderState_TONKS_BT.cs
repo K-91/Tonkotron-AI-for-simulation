@@ -1,21 +1,20 @@
 ﻿using System;
 using UnityEngine;
 
-public class WanderState_TONKS_FSM : BaseState_TONKS_FSM
-{
+public class WanderState_TONKS_BT : BaseState_TONKS_BT {
     float t = 0;
     // Start is called before the first frame update
-    public WanderState_TONKS_FSM() { }
+    public WanderState_TONKS_BT() { }
 
-    public override Type StateEnter(SmartTank_TONKS_FSM me) {
+    public override Type StateEnter(SmartTank_TONKS_BT me) {
         return null;
     }
 
-    public override Type StateExit(SmartTank_TONKS_FSM me) {
+    public override Type StateExit(SmartTank_TONKS_BT me) {
         return null;
     }
 
-    public override Type StateUpdate(SmartTank_TONKS_FSM me){
+    public override Type StateUpdate(SmartTank_TONKS_BT me){
         t += Time.deltaTime;
         if(t > 10f){
             me.NewRandomPoint();
@@ -29,6 +28,6 @@ public class WanderState_TONKS_FSM : BaseState_TONKS_FSM
         else {
             me.PathToRandom(0.95f);
         }
-        return typeof(ChoiceState_TONKS_FSM);
+        return typeof(ChoiceState_TONKS_BT);
     }
 }
