@@ -2,21 +2,21 @@
 using System.Linq;
 using UnityEngine;
 
-public class AttackTankState_TONKS_BT : BaseState_TONKS_BT {
+public class AttackTankState_TONKS_ALL3 : BaseState_TONKS_ALL3 {
     // Start is called before the first frame update
-    public AttackTankState_TONKS_BT() { }
+    public AttackTankState_TONKS_ALL3() { }
     Vector3 enemyLastFramePos;
     Vector3 enemyThisFramePos;
     Vector3 predictedDirection;
-    public override Type StateEnter(SmartTank_TONKS_BT me) {
+    public override Type StateEnter(SmartTank_TONKS_ALL3 me) {
         return null;
     }
 
-    public override Type StateExit(SmartTank_TONKS_BT me) {
+    public override Type StateExit(SmartTank_TONKS_ALL3 me) {
         return null;
     }
-    public override Type StateUpdate(SmartTank_TONKS_BT me){
-        if (me.tankSpottedCheck.Evaluate() == BTNodeStates.SUCCESS)
+    public override Type StateUpdate(SmartTank_TONKS_ALL3 me){
+        if (me.tankSpottedCheck.Evaluate() == BTNodeStates3.SUCCESS)
         {
             //predict moving targets
             me.targetTankPosition = me.targetTanksInSight.First().Key;
@@ -52,6 +52,6 @@ public class AttackTankState_TONKS_BT : BaseState_TONKS_BT {
             }
             enemyLastFramePos = me.targetTanksInSight.First().Key.transform.position;
         }
-        return typeof(ChoiceState_TONKS_BT);
+        return typeof(ChoiceState_TONKS_ALL3);
     }
 }

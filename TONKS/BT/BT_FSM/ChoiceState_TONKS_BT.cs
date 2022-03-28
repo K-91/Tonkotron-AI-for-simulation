@@ -18,7 +18,7 @@ public class ChoiceState_TONKS_BT : BaseState_TONKS_BT {
     public override Type StateUpdate(SmartTank_TONKS_BT me){
 
         //keep enemy in sights if we can
-        if(me.targetTanksInSight.Count > 0 && me.targetTanksInSight.First().Key != null) {
+        if(me.tankSpottedCheck.Evaluate() == BTNodeStates.SUCCESS) {
             try {
                 me.lookat(me.targetTankPosition.transform.position);
             }
@@ -35,29 +35,29 @@ public class ChoiceState_TONKS_BT : BaseState_TONKS_BT {
             if (item.Value.ContainsKey("Fuel")){
                 return typeof(CollectState_TONKS_BT);
             }
-            else if (me.GetHealth <= me.HPPanicLimit && item.Value.ContainsKey("Health") && me.GetFuel > me.FuelSurvivalLimit){
+            else if (me.healthMaxCheck.Evaluate() == BTNodeStates.SUCCESS && item.Value.ContainsKey("Health") && me.fuelCheck.Evaluate() == BTNodeStates.SUCCESS) {
                 return typeof(CollectState_TONKS_BT);
             }
-            else if (item.Value.ContainsKey("Ammo") && me.GetFuel > me.FuelSurvivalLimit){
+            else if (item.Value.ContainsKey("Ammo") && me.fuelCheck.Evaluate() == BTNodeStates.SUCCESS) {
                 return typeof(CollectState_TONKS_BT);
             }
             
         }
         //if we can see another tank and we're healthy we should fight
-        if (me.targetTanksInSight.Count > 0 && me.targetTanksInSight.First().Key != null && me.GetHealth > 30f) {
+        if (me.tankSpottedCheck.Evaluate() == BTNodeStates.SUCCESS && me.healthCheck.Evaluate() == BTNodeStates.SUCCESS) {
             return typeof(AttackTankState_TONKS_BT);
         }
         //if we can see another tank and are stuck, we may as well fight
-        if(me.targetTanksInSight.Count > 0 && me.targetTanksInSight.First().Key != null && (me.GetFuel < me.FuelSurvivalLimit)) {
+        if(me.tankSpottedCheck.Evaluate() == BTNodeStates.SUCCESS && me.fuelCheck.Evaluate() == BTNodeStates.FAILURE) {
             return typeof(AttackTankState_TONKS_BT);
         }
 
         //if we know where the enemy base is, we can shoot it
-        if (me.basesInSight.Count != 0 && me.GetFuel > me.FuelSurvivalLimit){
+        if (me.baseSpottedCheck.Evaluate() == BTNodeStates.SUCCESS && me.fuelCheck.Evaluate() == BTNodeStates.SUCCESS) {
             return typeof(AttackBaseState_TONKS_BT);
         }
         //if we're dangerously low on fuel, we'll stay still in hopes the other guy runs out first
-        if(me.GetFuel <= me.FuelSurvivalLimit) {
+        if(me.fuelCheck.Evaluate() == BTNodeStates.FAILURE) {
             return typeof(SurvivalState_TONKS_BT);
         }
 

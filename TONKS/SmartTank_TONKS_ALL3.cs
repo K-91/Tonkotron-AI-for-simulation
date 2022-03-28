@@ -3,7 +3,7 @@ using System;
 using UnityEngine;
 using System.Linq;
 
-public class SmartTank_TONKS_BT : AITank
+public class SmartTank_TONKS_ALL3 : AITank
 {
     public Dictionary<GameObject, float> targetTanksInSight = new Dictionary<GameObject, float>();
     public Dictionary<GameObject, float> consumablesInSight = new Dictionary<GameObject, float>();
@@ -24,23 +24,23 @@ public class SmartTank_TONKS_BT : AITank
     public Material tankbodycolor;
 
 
-    public BTAction healthCheck;
-    public BTAction healthMaxCheck;
-    public BTAction ammoCheck;
-    public BTAction fuelCheck;
-    public BTAction tankSpottedCheck;
-    public BTAction itemSpottedCheck;
-    public BTAction baseSpottedCheck;
-    public BTSequence battleReadyCheck;
+    public BTAction3 healthCheck;
+    public BTAction3 healthMaxCheck;
+    public BTAction3 ammoCheck;
+    public BTAction3 fuelCheck;
+    public BTAction3 tankSpottedCheck;
+    public BTAction3 itemSpottedCheck;
+    public BTAction3 baseSpottedCheck;
+    public BTSequence3 battleReadyCheck;
 
 
 
-    private StateMachine_TONKS_BT BT;
 
-    private float fuelPanicLimit = 125f;
-    private float fuelSurvivalLimit = 15f;
-    private float hpPanicLimit = 125f;
-    private int ammoPanicLimit = 15;
+
+    public Rules3 rules3 = new Rules3();
+    public Dictionary<string, bool> stats = new Dictionary<string, bool>();
+
+    private StateMachine_TONKS_ALL3 ALL3;
 
     private float rgb = 0f;
 
@@ -48,24 +48,25 @@ public class SmartTank_TONKS_BT : AITank
 
     private void Awake()
     {
-        if(BT == null) {
-            BT = gameObject.AddComponent<StateMachine_TONKS_BT>();
+        if(ALL3 == null) {
+            ALL3 = gameObject.AddComponent<StateMachine_TONKS_ALL3>();
         }
+
     }
     private void InitializeStateMachine(){
         targetTankPrediction = new GameObject("TonksAimPosition");
-        Dictionary<Type, BaseState_TONKS_BT> states = new Dictionary<Type, BaseState_TONKS_BT>
+        Dictionary<Type, BaseState_TONKS_ALL3> states = new Dictionary<Type, BaseState_TONKS_ALL3>
         {
-            { typeof(ChoiceState_TONKS_BT), new ChoiceState_TONKS_BT() },
+            { typeof(ChoiceState_TONKS_ALL3), new ChoiceState_TONKS_ALL3() },
 
-            { typeof(AttackTankState_TONKS_BT), new AttackTankState_TONKS_BT() },
-            { typeof(AttackBaseState_TONKS_BT), new AttackBaseState_TONKS_BT() },
-            { typeof(CollectState_TONKS_BT), new CollectState_TONKS_BT() },
-            { typeof(WanderState_TONKS_BT), new WanderState_TONKS_BT() },
-            { typeof(SurvivalState_TONKS_BT), new SurvivalState_TONKS_BT() }
+            { typeof(AttackTankState_TONKS_ALL3), new AttackTankState_TONKS_ALL3() },
+            { typeof(AttackBaseState_TONKS_ALL3), new AttackBaseState_TONKS_ALL3() },
+            { typeof(CollectState_TONKS_ALL3), new CollectState_TONKS_ALL3() },
+            { typeof(WanderState_TONKS_ALL3), new WanderState_TONKS_ALL3() },
+            { typeof(SurvivalState_TONKS_ALL3), new SurvivalState_TONKS_ALL3() }
         };
-        BT.SetStates(states);
-        BT.SetTank();
+        ALL3.SetStates(states);
+        ALL3.SetTank();
         targetTankPrediction.transform.SetParent(transform.parent.transform);
     }
 
@@ -80,18 +81,37 @@ public class SmartTank_TONKS_BT : AITank
         tanktopcolor = transform.Find("Model").Find("Turret").Find("TurretPart").GetComponent<Renderer>().material;
         //basecolor = transform.Find("Base").Find("Model").GetComponent<Renderer>().material;
         InitializeStateMachine();
-        healthCheck = new BTAction(HealthCheck);
-        healthMaxCheck = new BTAction(HealthMaxCheck);
-        ammoCheck = new BTAction(AmmoCheck);
-        fuelCheck = new BTAction(FuelCheck);
-        itemSpottedCheck = new BTAction(ItemSpottedCheck);
-        tankSpottedCheck = new BTAction(TankSpottedCheck);
-        baseSpottedCheck = new BTAction(BaseSpottedCheck);
-        battleReadyCheck = new BTSequence(new List<BTBaseNode> { healthCheck, ammoCheck, fuelCheck});
+
+        stats.Add("lowHP", false);
+        stats.Add("maxHP", false);
+        stats.Add("tankSpotted", false);
+        stats.Add("baseSpotted", false);
+        stats.Add("battleReady", false);
+        stats.Add("noAmmo", false);
+        stats.Add("lowFuel", false);
+        stats.Add("foundItem", false);
+        stats.Add("true", true);
+        stats.Add("false", false);
+
+        rules3.AddRule(new Rule3("foundItem","true",typeof(CollectState_TONKS_ALL3),Rule3.Predicate.And));
+        rules3.AddRule(new Rule3("tankSpotted","battleReady",typeof(AttackTankState_TONKS_ALL3),Rule3.Predicate.And));
+        rules3.AddRule(new Rule3("lowFuel", "tankSpotted" ,typeof(AttackTankState_TONKS_ALL3),Rule3.Predicate.And));
+
+        rules3.AddRule(new Rule3("baseSpotted", "battleReady" ,typeof(AttackBaseState_TONKS_ALL3),Rule3.Predicate.And));
+        rules3.AddRule(new Rule3("lowFuel", "true" ,typeof(SurvivalState_TONKS_ALL3),Rule3.Predicate.And));
 
 
 
-       
+        healthCheck = new BTAction3(HealthCheck);
+        healthMaxCheck = new BTAction3(HealthMaxCheck);
+        ammoCheck = new BTAction3(AmmoCheck);
+        fuelCheck = new BTAction3(FuelCheck);
+        itemSpottedCheck = new BTAction3(ItemSpottedCheck);
+        tankSpottedCheck = new BTAction3(TankSpottedCheck);
+        baseSpottedCheck = new BTAction3(BaseSpottedCheck);
+        battleReadyCheck = new BTSequence3(new List<BTBaseNode3> { healthCheck, ammoCheck, fuelCheck });
+
+
     }
 
     /*******************************************************************************************************       
@@ -103,16 +123,9 @@ public class SmartTank_TONKS_BT : AITank
         consumablesInSight = GetAllConsumablesFound;
         basesInSight = GetAllBasesFound;
         InSightUpdate();
+        StatsUpdate();
         RGBupdate();
     }
-
-    public float GetHealth{ get { return GetHealthLevel; }}
-    public float GetAmmo{ get { return GetAmmoLevel; }}
-    public float GetFuel{ get { return GetFuelLevel; }}
-    public float FuelPanicLimit { get { return fuelPanicLimit; }}
-    public float FuelSurvivalLimit { get { return fuelSurvivalLimit; }}
-    public float HPPanicLimit { get { return hpPanicLimit; }}
-    public float AmmoPanicLimit { get { return ammoPanicLimit; }}
 
     public void PathToRandom(float x = 1f){ FollowPathToRandomPoint(x); }
     public void NewRandomPoint(){ GenerateRandomPoint(); }
@@ -141,66 +154,76 @@ public class SmartTank_TONKS_BT : AITank
         tankbodycolor.color = Color.HSVToRGB(rgb, 1f, 1f);
         tanktopcolor.color = Color.HSVToRGB(rgb , 1f, 1f);
     }
-    public BTNodeStates HealthCheck() {
-        if(GetHealthLevel < 30f) {
+    public void StatsUpdate() {
+        stats["lowHP"] = (GetHealthLevel <= 30f);
+        stats["maxHP"] = (GetHealthLevel >= 125f);
+        stats["tankSpotted"] = (targetTanksInSight.Count != 0 && targetTanksInSight.First().Key != null);
+        stats["baseSpotted"] = (basesInSight.Count != 0 && basesInSight.First().Key != null);
+        stats["foundItem"] = (consumablesLastSeen.Count != 0 && consumablesLastSeen.First().Key != null);
+        stats["noAmmo"] = (GetAmmoLevel == 0);
+        stats["lowFuel"] = (GetFuelLevel <= 15f);
+        stats["battleReady"] = (battleReadyCheck.Evaluate() == BTNodeStates3.SUCCESS) ? true : false ;
+    }
+    public BTNodeStates3 HealthCheck() {
+        if(stats["lowHP"]) {
 
-            return BTNodeStates.FAILURE;
+            return BTNodeStates3.FAILURE;
         }
         else {
-            return BTNodeStates.SUCCESS;
+            return BTNodeStates3.SUCCESS;
         }
     }
-    public BTNodeStates HealthMaxCheck() {
-        if(GetHealthLevel < 125f) {
+    public BTNodeStates3 HealthMaxCheck() {
+        if(stats["maxHP"]) {
 
-            return BTNodeStates.FAILURE;
+            return BTNodeStates3.SUCCESS;
         }
         else {
-            return BTNodeStates.SUCCESS;
-        }
-    }
-
-    public BTNodeStates AmmoCheck() {
-        if(GetAmmoLevel == 0) {
-
-            return BTNodeStates.FAILURE;
-        }
-        else {
-            return BTNodeStates.SUCCESS;
-        }
-    }
-    public BTNodeStates FuelCheck() {
-        if(GetFuelLevel <= 15f) {
-
-            return BTNodeStates.FAILURE;
-        }
-        else {
-            return BTNodeStates.SUCCESS;
-        }
-    }
-    public BTNodeStates ItemSpottedCheck() {
-        if(consumablesLastSeen.Count != 0 && consumablesLastSeen.First().Key != null) {
-            return BTNodeStates.SUCCESS;
-        }
-        else {
-            return BTNodeStates.FAILURE;
+            return BTNodeStates3.FAILURE;
         }
     }
 
-    public BTNodeStates TankSpottedCheck() {
-        if(targetTanksInSight.Count != 0 && targetTanksInSight.First().Key != null) {
-            return BTNodeStates.SUCCESS;
+    public BTNodeStates3 AmmoCheck() {
+        if(stats["noAmmo"]) {
+
+            return BTNodeStates3.FAILURE;
         }
         else {
-            return BTNodeStates.FAILURE;
+            return BTNodeStates3.SUCCESS;
         }
     }
-    public BTNodeStates BaseSpottedCheck() {
-        if(basesInSight.Count != 0 && basesInSight.First().Key != null) {
-            return BTNodeStates.SUCCESS;
+    public BTNodeStates3 FuelCheck() {
+        if(stats["lowFuel"]) {
+
+            return BTNodeStates3.FAILURE;
         }
         else {
-            return BTNodeStates.FAILURE;
+            return BTNodeStates3.SUCCESS;
+        }
+    }
+    public BTNodeStates3 ItemSpottedCheck() {
+        if(stats["foundItem"]) {
+            return BTNodeStates3.SUCCESS;
+        }
+        else {
+            return BTNodeStates3.FAILURE;
+        }
+    }
+
+    public BTNodeStates3 TankSpottedCheck() {
+        if(stats["tankSpotted"]) {
+            return BTNodeStates3.SUCCESS;
+        }
+        else {
+            return BTNodeStates3.FAILURE;
+        }
+    }
+    public BTNodeStates3 BaseSpottedCheck() {
+        if(stats["baseSpotted"]) {
+            return BTNodeStates3.SUCCESS;
+        }
+        else {
+            return BTNodeStates3.FAILURE;
         }
     }
     /*******************************************************************************************************       
